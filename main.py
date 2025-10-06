@@ -47,7 +47,7 @@ async def home(request: Request):
     """
     try:
         # Seleccionamos todas las entradas de la tabla 'articles'
-        response = await supabase.table("articles").select("*").execute()
+        response = supabase.table("articles").select("*").execute()
         # El cliente de Supabase devuelve los datos en response.data
         articles = getattr(response, 'data', [])
         print(f"Artículos encontrados: {len(articles)}")
