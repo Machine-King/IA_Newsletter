@@ -1,0 +1,148 @@
+<!-- t    <title>AI News Agent Dashboard</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', path='/style.css') }}">
+    <script src="{{ url_for('static', path='/scripts.js') }}" defer></script>lates/index.html: Dashboard moderno para AI News Agent -->
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI News Agent Dashboard</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', path='/style.css') }}">
+    <style>
+        /* Estilos específicos para esta página */
+        .refresh-status {
+            display: none;
+            margin-top: 1rem;
+        }
+        
+        .refresh-status.show {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <div class="container fade-in">
+        <!-- Header -->
+        <header class="header">
+            <h1>🤖 AI News Dashboard</h1>
+            <p class="subtitle">Portal inteligente de noticias de Inteligencia Artificial</p>
+        </header>
+
+        <!-- Controles de actualización -->
+        <section class="controls">
+            <h2>📡 Actualizar Contenido</h2>
+            <div class="button-group">
+                <button class="btn btn-primary" onclick="updateSource('news')" title="Actualizar noticias de TechCrunch y The Verge">
+                    📰 Actualizar Noticias
+                </button>
+                <button class="btn btn-warning" onclick="updateSource('arxiv')" title="Actualizar papers de arXiv">
+                    📄 Actualizar Papers
+                </button>
+                <button class="btn btn-secondary" onclick="updateSource('youtube')" title="Actualizar videos de YouTube">
+                    🎥 Actualizar Videos
+                </button>
+                <button class="btn btn-success" onclick="updateSource('all')" title="Actualizar todas las fuentes">
+                    🔄 Actualizar Todo
+                </button>
+                <button class="btn btn-secondary" onclick="loadStats()" title="Recargar estadísticas">
+                    📊 Ver Estadísticas
+                </button>
+                <button class="btn btn-secondary" onclick="dashboard.exportData()" title="Exportar datos como JSON">
+                    💾 Exportar
+                </button>
+            </div>
+            
+            <!-- Barra de búsqueda -->
+            <div style="margin-top: 1rem;">
+                <input type="text" 
+                       placeholder="🔍 Buscar en artículos..." 
+                       style="padding: 0.75rem; border: 1px solid var(--border-color); border-radius: var(--border-radius); width: 300px; font-size: 0.9rem;"
+                       onkeyup="dashboard.filterArticles(this.value)">
+            </div>
+            
+            <div id="refresh-status" class="refresh-status">
+                <div class="message message-info">
+                    <span class="loading">
+                        <span class="spinner"></span>
+                        Actualizando contenido...
+                    </span>
+                </div>
+            </div>
+        </section>
+
+        <!-- Estadísticas -->
+        <section id="stats-section" class="stats" style="display: none;">
+            <!-- Las estadísticas se cargarán dinámicamente -->
+        </section>
+
+        <!-- Sección de artículos -->
+        <section class="articles-section">
+            <div class="articles-header">
+                <h2>📚 Artículos Recientes</h2>
+            </div>
+            
+            {% if articles and articles|length > 0 %}
+            <div class="table-container">
+                <table class="articles-table">
+                    <thead>
+                        <tr>
+                            <th>🏷️ Fuente</th>
+                            <th>📰 Título</th>
+                            <th>🏢 Categoría</th>
+                            <th>📝 Resumen</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for article in articles %}
+                        <tr class="card-hover">
+                            <td>
+                                <span class="source-badge source-{{ article.source.lower().replace(' ', '') }}">
+                                    {{ article.source }}
+                                </span>
+                            </td>
+                            <td>
+                                <a href="{{ article.url }}" target="_blank" class="article-link">
+                                    {{ article.title }}
+                                </a>
+                            </td>
+                            <td>
+                                <span class="category-tag">{{ article.category }}</span>
+                            </td>
+                            <td>
+                                <div class="article-summary">{{ article.summary }}</div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="empty-state">
+                <h3>📭 No hay artículos disponibles</h3>
+                <p>Utiliza los botones de arriba para cargar contenido desde diferentes fuentes.</p>
+            </div>
+            {% endif %}
+        </section>
+    </div>
+
+    <script>
+        // Atajos de teclado y tooltips adicionales
+        document.addEventListener('keydown', (e) => {
+            // Mostrar ayuda con F1
+            if (e.key === 'F1') {
+                e.preventDefault();
+                alert(`🎯 Atajos de teclado:
+                
+Ctrl/Cmd + R: Actualizar todo
+Ctrl/Cmd + 1: Actualizar noticias
+Ctrl/Cmd + 2: Actualizar papers
+Ctrl/Cmd + 3: Actualizar videos
+Ctrl/Cmd + 4: Actualizar todo
+F1: Mostrar esta ayuda`);
+            }
+        });
+    </script>
+</body>
+</html>
