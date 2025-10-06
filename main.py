@@ -54,7 +54,7 @@ async def home(request: Request):
     except Exception as e:
         articles = []
         print(f"Error al recuperar datos de Supabase: {e}")
-    return templates.TemplateResponse("index.html", {"request": request, "entries": articles})
+    return templates.TemplateResponse("index.html", {"request": request, "articles": articles})
 
 @app.post("/update/news")
 async def update_news():
@@ -146,31 +146,6 @@ async def update_all():
             }, status_code=200)
         except Exception as e:
             raise HTTPException(status_code=500, detail=f"Error al actualizar todas las fuentes: {str(e)}")
-
-@app.get("/status")
-async def get_status():
-    """
-    Endpoint para obtener el estado actual de la base de datos (número de artículos por fuente).
-    """
-    try:
-        response = supabase.table("articles").select("source").execute()
-        articles = getattr(response, 'data', []) or []
-        
-        # Contar artículos por fuente
-        source_counts = {}
-        for article in articles:
-            source = article.get("source", "Unknown") if isinstance(article, dict) else "Unknown"
-            source_counts[source] = source_counts.get(source, 0) + 1
-        
-        total_articles = len(articles)
-        
-        return JSONResponse(content={
-            "total_articles": total_articles,
-            "by_source": source_counts,
-            "last_updated": "Real-time"
-        }, status_code=200)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error al obtener estado: {str(e)}")
 
 async def main():
         uvicorn.run("main:app", host="localhost", port=8000, reload=True)

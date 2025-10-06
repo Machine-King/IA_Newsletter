@@ -1,7 +1,10 @@
 <!-- t    <title>AI News Agent Dashboard</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', path='/style.css') }}">
-    <script src="{{ url_for('static', path='/scripts.js') }}" defer></script>lates/index.html: Dashboard moderno para AI News Agent -->
+    <link rel="stylesheet" href="{{ url_for('static', path='/icons.css') }}">
+    <script src="{{ url_for('static', path='/scripts.js') }}" defer></script>
+    <meta name="description" content="Dashboard inteligente para noticias de IA">
+    <meta name="theme-color" content="#2563eb">lates/index.html: Dashboard moderno para AI News Agent -->
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -46,11 +49,8 @@
                 <button class="btn btn-success" onclick="updateSource('all')" title="Actualizar todas las fuentes">
                     🔄 Actualizar Todo
                 </button>
-                <button class="btn btn-secondary" onclick="loadStats()" title="Recargar estadísticas">
-                    📊 Ver Estadísticas
-                </button>
-                <button class="btn btn-secondary" onclick="dashboard.exportData()" title="Exportar datos como JSON">
-                    💾 Exportar
+                <button class="btn btn-secondary" onclick="window.location.reload()" title="Recargar página">
+                    � Recargar
                 </button>
             </div>
             
@@ -59,7 +59,7 @@
                 <input type="text" 
                        placeholder="🔍 Buscar en artículos..." 
                        style="padding: 0.75rem; border: 1px solid var(--border-color); border-radius: var(--border-radius); width: 300px; font-size: 0.9rem;"
-                       onkeyup="dashboard.filterArticles(this.value)">
+                       onkeyup="filterArticles(this.value)">
             </div>
             
             <div id="refresh-status" class="refresh-status">
@@ -70,11 +70,6 @@
                     </span>
                 </div>
             </div>
-        </section>
-
-        <!-- Estadísticas -->
-        <section id="stats-section" class="stats" style="display: none;">
-            <!-- Las estadísticas se cargarán dinámicamente -->
         </section>
 
         <!-- Sección de artículos -->
@@ -128,18 +123,94 @@
     </div>
 
     <script>
-        // Atajos de teclado y tooltips adicionales
+        // Funciones JavaScript simples para interactividad
+        async function updateSource(source) {
+            const statusEl = document.getElementById('refresh-status');
+            statusEl.className = 'refresh-status show';
+            
+            try {
+                const response = await fetch(`/update/${source}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    }
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok) {
+                    showMessage('success', `✅ ${result.message}`);
+                    // Recargar la página después de un breve delay
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 2000);
+                } else {
+                    showMessage('error', `❌ Error: ${result.detail}`);
+                }
+            } catch (error) {
+                showMessage('error', `❌ Error de conexión: ${error.message}`);
+            } finally {
+                statusEl.className = 'refresh-status';
+            }
+        }
+
+        function showMessage(type, message) {
+            const statusEl = document.getElementById('refresh-status');
+            statusEl.innerHTML = `<div class="message message-${type}">${message}</div>`;
+            statusEl.className = 'refresh-status show';
+            
+            setTimeout(() => {
+                statusEl.className = 'refresh-status';
+            }, 5000);
+        }
+
+        function filterArticles(searchTerm) {
+            const rows = document.querySelectorAll('.articles-table tbody tr');
+            let visibleCount = 0;
+
+            rows.forEach(row => {
+                const text = row.textContent.toLowerCase();
+                const isVisible = text.includes(searchTerm.toLowerCase());
+                row.style.display = isVisible ? '' : 'none';
+                if (isVisible) visibleCount++;
+            });
+
+            // Mostrar mensaje si no hay resultados
+            showFilterResults(visibleCount, rows.length);
+        }
+
+        function showFilterResults(visible, total) {
+            let resultMsg = document.getElementById('filter-results');
+            if (!resultMsg) {
+                resultMsg = document.createElement('div');
+                resultMsg.id = 'filter-results';
+                resultMsg.className = 'message message-info';
+                resultMsg.style.marginTop = '1rem';
+                document.querySelector('.articles-header').appendChild(resultMsg);
+            }
+
+            if (visible === total) {
+                resultMsg.style.display = 'none';
+            } else {
+                resultMsg.style.display = 'block';
+                resultMsg.textContent = `Mostrando ${visible} de ${total} artículos`;
+            }
+        }
+
+        // Atajos de teclado
         document.addEventListener('keydown', (e) => {
-            // Mostrar ayuda con F1
+            // Ctrl/Cmd + R para actualizar todo
+            if ((e.ctrlKey || e.metaKey) && e.key === 'r') {
+                e.preventDefault();
+                updateSource('all');
+            }
+            
+            // F1 para ayuda
             if (e.key === 'F1') {
                 e.preventDefault();
                 alert(`🎯 Atajos de teclado:
                 
 Ctrl/Cmd + R: Actualizar todo
-Ctrl/Cmd + 1: Actualizar noticias
-Ctrl/Cmd + 2: Actualizar papers
-Ctrl/Cmd + 3: Actualizar videos
-Ctrl/Cmd + 4: Actualizar todo
 F1: Mostrar esta ayuda`);
             }
         });
