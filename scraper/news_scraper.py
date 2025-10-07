@@ -9,20 +9,16 @@ from agent.summarizer import summarize
 from agent.classifier import classify
 from db.supabase_client import SupabaseClient
 import asyncio
-from dataclasses import dataclass
+from shared_definitions import Deps, upload_data
 from httpx import AsyncClient
 from dotenv import load_dotenv
 import logfire
+from datetime import datetime
 
 load_dotenv()
-logfire.configure(send_to_logfire='if-token-present')
-logfire.instrument_pydantic_ai()
 
-@dataclass
-class Deps:
-    client: AsyncClient
 
-async def scrape_news(ctx: Deps):
+async def scrape_news(ctx: Deps)-> int:
     """
     Recolecta las últimas noticias de TechCrunch (categoría IA) y The Verge (tema IA),
     y las procesa.
@@ -32,18 +28,23 @@ async def scrape_news(ctx: Deps):
         "TechCrunch": "https://techcrunch.com/category/artificial-intelligence/feed/",
         "TheVerge": "https://www.theverge.com/rss/index.xml"
     }
+    añadidos=0
     for source, feed_url in feeds.items():
         feed = feedparser.parse(feed_url)
-        for entry in feed.entries[:3]:  # Tomar hasta 5 entradas por feed
+        for entry in feed.entries[:5]:  # Tomar hasta 5 entradas por feed
             title = entry.title
             # Dependiendo del feed, la descripción puede llamarse summary o description
             summary_text = entry.summary if 'summary' in entry else entry.get('description', '')
             link = entry.link
-            # Filtrar si es The Verge: solo incluir noticias que mencionan 'IA' o 'AI'
-            if source == "TheVerge":
-                text_lower = (title + summary_text).lower() # type: ignore
-                if not ("ai" in text_lower or "inteligencia artificial" in text_lower):
-                    continue
+            date_str = entry.get('published', 'No date available')
+            # Original string
+            # Parse the date string to a datetime object
+            try:
+                dt = datetime.strptime(date_str, "%a, %d %b %Y %H:%M:%S %z") # type: ignore
+            except ValueError:
+                dt = datetime.fromisoformat(date_str) # type: ignore
+            # Convert to ISO 8601 format
+            date_str = dt.strftime("%Y-%m-%d")
             # Resumir y clasificar
             summary = await summarize(summary_text, ctx) # type: ignore
             category = await classify(summary_text, ctx) # type: ignore
@@ -52,14 +53,15 @@ async def scrape_news(ctx: Deps):
                 "title": title,
                 "summary": summary,
                 "category": category,
-                "url": link
+                "url": link,
+                "date": date_str,
             }
-            res_db = client.insert("articles", data)
-            if res_db.status_code != 201:
-                print(f"Error al insertar noticia en Supabase: {res_db.text}")
+            if upload_data(data):
+                print(f"✓ Insertado correctamente: {title[:30]}...") # type: ignore
+                añadidos+=1
             else:
-                print(f"Noticia insertada: {title}")
-
+                print(f"✗ No insertado (posible duplicado): {title[:30]}...") # type: ignore
+    return añadidos
 async def main():
     async with AsyncClient() as client:
         logfire.instrument_httpx(client, capture_all=True)

@@ -84,6 +84,7 @@
                             <th>📰 Título</th>
                             <th>🏢 Categoría</th>
                             <th>📝 Resumen</th>
+                            <th>🗓️ Fecha</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -105,6 +106,9 @@
                             <td>
                                 <div class="article-summary">{{ article.summary }}</div>
                             </td>
+                            <td>
+                                <div class="article-date">{{ article.date }}</div>
+                            </td>
                         </tr>
                         {% endfor %}
                     </tbody>
@@ -123,6 +127,14 @@
         // Funciones JavaScript simples para interactividad
         async function updateSource(source) {
             const statusEl = document.getElementById('refresh-status');
+            
+            // Limpiar mensaje anterior inmediatamente y del storage
+            statusEl.className = 'refresh-status';
+            statusEl.innerHTML = '';
+            sessionStorage.removeItem('lastMessage');
+            
+            // Mostrar estado de carga
+            statusEl.innerHTML = '<div class="message message-info"><span class="loading"><span class="spinner"></span>Actualizando contenido...</span></div>';
             statusEl.className = 'refresh-status show';
             
             try {
@@ -134,15 +146,36 @@
                 });
                 
                 const result = await response.json();
+                let messageType, messageText;
+
+                if (response.status == 200) {
+                    messageType = 'success';
+                    messageText = `✅ ${result.message}`;
+                } else if (response.status == 201) {
+                    messageType = 'warning';
+                    messageText = `⚠️ ${result.message}`;
+                } else if (response.status == 202) {
+                    messageType = 'info';
+                    messageText = `ℹ️ ${result.message}`;
+                } else {
+                    messageType = 'error';
+                    messageText = `❌ Error: ${result.detail || result.message}`;
+                }
                 
-                if (response.ok) {
-                    showMessage('success', `✅ ${result.message}`);
-                    // Recargar la página después de un breve delay
+                // Guardar el mensaje en sessionStorage antes de recargar
+                sessionStorage.setItem('lastMessage', JSON.stringify({
+                    type: messageType,
+                    text: messageText,
+                    timestamp: Date.now()
+                }));
+                
+                showMessage(messageType, messageText);
+                
+                // Recargar la página después de mostrar el mensaje (excepto para errores de servidor)
+                if (response.status !== 500) {
                     setTimeout(() => {
                         window.location.reload();
-                    }, 2000);
-                } else {
-                    showMessage('error', `❌ Error: ${result.detail}`);
+                    }, 3000);
                 }
             } catch (error) {
                 showMessage('error', `❌ Error de conexión: ${error.message}`);
@@ -209,6 +242,33 @@
                 
 Ctrl/Cmd + R: Actualizar todo
 F1: Mostrar esta ayuda`);
+            }
+        });
+
+        // Mostrar mensaje persistente después de recargar la página
+        document.addEventListener('DOMContentLoaded', function() {
+            const savedMessage = sessionStorage.getItem('lastMessage');
+            if (savedMessage) {
+                try {
+                    const messageData = JSON.parse(savedMessage);
+                    const timeDiff = Date.now() - messageData.timestamp;
+                    
+                    // Mostrar el mensaje solo si han pasado menos de 10 segundos desde que se guardó
+                    if (timeDiff < 10000) {
+                        showMessage(messageData.type, messageData.text);
+                        
+                        // Limpiar el mensaje después de mostrarlo para evitar repeticiones
+                        setTimeout(() => {
+                            sessionStorage.removeItem('lastMessage');
+                        }, 8000);
+                    } else {
+                        // Si ha pasado demasiado tiempo, limpiar el mensaje
+                        sessionStorage.removeItem('lastMessage');
+                    }
+                } catch (e) {
+                    // Si hay error al parsear, limpiar el storage
+                    sessionStorage.removeItem('lastMessage');
+                }
             }
         });
     </script>

@@ -1,20 +1,11 @@
 # agent/classifier.py: Llama al API de Gemini (OpenAI) para clasificar el contenido.
 from dotenv import load_dotenv
 from pydantic_ai import Agent #, RunContext
-from dataclasses import dataclass
+from shared_definitions import Deps
 
-import logfire
-from httpx import AsyncClient
 # Configurar clave de API de Gemini (OpenAI)
 load_dotenv()
 
-load_dotenv()
-logfire.configure(send_to_logfire='if-token-present')
-logfire.instrument_pydantic_ai()
-
-@dataclass
-class Deps:
-    client: AsyncClient
 
 CATEGORIES = ["investigación", "nuevo_producto", "política/regulación", "opinión/ética", "evento/anuncio"]
 

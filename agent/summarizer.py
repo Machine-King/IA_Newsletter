@@ -1,18 +1,9 @@
 from dotenv import load_dotenv
 from pydantic_ai import Agent
-from dataclasses import dataclass
-
-import logfire
-from httpx import AsyncClient
+from shared_definitions import Deps
 
 # Configurar clave de API de Gemini
 load_dotenv()
-logfire.configure(send_to_logfire='if-token-present')
-logfire.instrument_pydantic_ai()
-
-@dataclass
-class Deps:
-    client: AsyncClient
     
 async def summarize(text: str, ctx: Deps) -> str:
     """

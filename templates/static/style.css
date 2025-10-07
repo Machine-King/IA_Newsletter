@@ -326,6 +326,16 @@ body {
     line-height: 1.5;
 }
 
+/* Resumen con límite de líneas */
+.article-date {
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    color: var(--text-secondary);
+    line-height: 1.5;
+}
 /* Estados de carga */
 .loading {
     display: inline-flex;

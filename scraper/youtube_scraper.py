@@ -8,31 +8,27 @@ from youtube_search import YoutubeSearch
 from agent.summarizer import summarize
 from agent.classifier import classify
 from db.supabase_client import SupabaseClient
-from dataclasses import dataclass
+from shared_definitions import Deps, upload_data
 from httpx import AsyncClient
 from dotenv import load_dotenv
+from datetime import date
 import logfire
 import asyncio
 
 load_dotenv()
-logfire.configure(send_to_logfire='if-token-present')
-logfire.instrument_pydantic_ai()
 
-@dataclass
-class Deps:
-    client: AsyncClient
-
-async def scrape_youtube(ctx: Deps):
+async def scrape_youtube(ctx: Deps)-> int:
     """
     Busca videos de YouTube con la palabra clave 'Inteligencia Artificial',
     resume su contenido y los clasifica.
     """
     client = SupabaseClient()
     query = "Inteligencia Artificial"
-    max_results = 3
+    max_results = 5
     # Realizar búsqueda en YouTube (sin API oficial)
     results = YoutubeSearch(query, max_results=max_results).to_dict()
     print(results)
+    añadidos=0
     for res in results:
         title = res.get('title', 'Sin título') # type: ignore
         # Construir URL completo del video
@@ -44,18 +40,22 @@ async def scrape_youtube(ctx: Deps):
         summary = await summarize(text_to_summarize, ctx) # type: ignore
         print(f"Resumen generado: {summary}")
         category = await classify(text_to_summarize, ctx) # type: ignore
+        #Get current date
+        current_date = str(date.today().isoformat())
         data = {
             "source": "YouTube",
             "title": title,
             "summary": summary,
             "category": category,
-            "url": url
+            "url": url,
+            "date": current_date
         }
-        res_db = client.insert("articles", data)
-        if res_db.status_code != 201:
-            print(f"Error al insertar video en Supabase: {res_db.text}")
+        if upload_data(data):
+            print(f"✓ Insertado correctamente: {title[:30]}...") # type: ignore
+            añadidos += 1
         else:
-            print(f"Video insertado: {title}")
+            print(f"✗ No insertado (posible duplicado): {title[:30]}...") # type: ignore
+    return añadidos
 
 async def main():
     async with AsyncClient() as client:

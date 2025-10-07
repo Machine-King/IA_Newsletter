@@ -8,9 +8,9 @@ import feedparser
 from agent.summarizer import summarize, Deps as SummarizerDeps
 from agent.classifier import classify, Deps as ClassifierDeps
 from db.supabase_client import SupabaseClient
-from dataclasses import dataclass
 from httpx import AsyncClient
 from dotenv import load_dotenv
+from shared_definitions import Deps, upload_data
 import asyncio
 import logfire
 import ssl
@@ -21,14 +21,8 @@ ssl_context.check_hostname = False
 ssl_context.verify_mode = ssl.CERT_NONE
 
 load_dotenv()
-logfire.configure(send_to_logfire='if-token-present')
-logfire.instrument_pydantic_ai()
 
-@dataclass
-class Deps:
-    client: AsyncClient
-
-async def scrape_arxiv(ctx: Deps):
+async def scrape_arxiv(ctx: Deps)-> int:
     """
     Busca los últimos papers en arXiv de la categoría cs.AI y los procesa.
     """
@@ -37,7 +31,7 @@ async def scrape_arxiv(ctx: Deps):
     # Usar HTTPS en lugar de HTTP para evitar redirects
     base_url = 'https://export.arxiv.org/api/query?'
     search_query = 'cat:cs.AI'  # Volver a la categoría original que debería funcionar
-    max_results = 3  # Reducir para testing y respeto del rate limit
+    max_results = 5# Reducir para testing y respeto del rate limit
     query = f'search_query={search_query}&start=0&max_results={max_results}&sortBy=submittedDate&sortOrder=descending'
     
     # Construir URL completa
@@ -72,11 +66,14 @@ async def scrape_arxiv(ctx: Deps):
     summarizer_ctx = SummarizerDeps(client=ctx.client)
     classifier_ctx = ClassifierDeps(client=ctx.client)
     
+    añadidos=0
     # Iterar sobre las entradas del feed
     for entry in feed.entries:
         title = entry.get('title', 'Sin título')
         summary_text = entry.get('summary', 'Nada que resumir')  
         link = entry.get('link', 'No link available')
+        date = entry.get('published', 'No date available')
+        date = date.split('T')[0] # type: ignore
         print(title)
         print(link)
         print(summary_text[:50]) # type: ignore
@@ -90,20 +87,18 @@ async def scrape_arxiv(ctx: Deps):
             "title": title,
             "summary": summary,
             "category": category,
-            "url": link
+            "url": link,
+            "date": date,
         }
-        
         # Insertar en Supabase
-        res = client.insert("articles", data)
-        if res.status_code != 201:
-            print(f"Error al insertar en Supabase: {res.text}")
-        else:
+        if upload_data(data):
             print(f"✓ Insertado correctamente: {title[:30]}...") # type: ignore
-        
+            añadidos+=1
+        else:
+            print(f"✗ No insertado (posible duplicado): {title[:30]}...") # type: ignore
         # Delay para respetar rate limits de la API
         await asyncio.sleep(5)  # 5 segundos entre requests
-    
-    return f'Procesados {len(feed.entries)} papers de arXiv'
+    return añadidos
 
 async def main():
     async with AsyncClient() as client:
