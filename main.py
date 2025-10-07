@@ -1,7 +1,6 @@
 # main.py
 
 import os
-from dataclasses import dataclass
 from fastapi import FastAPI, Request, HTTPException
 from fastapi.templating import Jinja2Templates
 from fastapi.responses import JSONResponse, FileResponse
@@ -66,7 +65,7 @@ async def home(request: Request):
         # Seleccionamos todas las entradas de la tabla 'articles' ordenadas por fecha (desc) y fuente (asc)
         response = supabase.table("articles").select("*").order("date", desc=True).order("source", desc=False).execute()
         # El cliente de Supabase devuelve los datos en response.data
-        articles = getattr(response, 'data', []) or []
+        articles = getattr(response, 'data', [])
         print(f"Artículos encontrados: {len(articles)}")
     except Exception as e:
         articles = []
@@ -213,7 +212,7 @@ async def update_all():
             raise HTTPException(status_code=500, detail=f"Error al actualizar todas las fuentes: {str(e)}")
 
 async def main():
-    uvicorn.run("main:app", host="localhost", port=8000, reload=True)
+        uvicorn.run("main:app", host="localhost", port=8000, reload=True)
 
 if __name__ == "__main__":
     asyncio.run(main())

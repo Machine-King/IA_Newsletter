@@ -13,4 +13,5 @@ dependencies = [
     "pydantic-ai>=1.0.15",
     "supabase>=2.21.1",
     "youtube-search>=2.1.2",
+    "Jinja2>=3.1",
 ]
